@@ -1,5 +1,5 @@
 Bash script for automatic EBS volume snapshots on Amazon Web Services (AWS)
-===================================
+------------------------------------------
 
 forked from https://github.com/CaseyLabs/aws-ec2-ebs-automatic-snapshot-bash
 
