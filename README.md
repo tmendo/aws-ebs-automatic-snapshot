@@ -1,89 +1,72 @@
-aws-ec2-ebs-automatic-snapshot-bash
+Bash script for automatic EBS volume snapshots on Amazon Web Services (AWS)
 ===================================
 
-####Bash script for Automatic EBS Snapshots and Cleanup on Amazon Web Services (AWS)
+forked from https://github.com/CaseyLabs/aws-ec2-ebs-automatic-snapshot-bash
 
-*Originally written by [Star Dot Hosting] (http://www.stardothosting.com)*
+What is different from the original one?
+-------
 
-Heavily updated by  **[AWS Consultants - Casey Labs Inc.] (http://www.caseylabs.com)**
+- limited to a specific instance ID
+- snapshots retention changed to 31 days
+- less permissions for the IAM user
+- added filter to limit to the user own snapshots (probably not needed)
 
-*Casey Labs - Contact us for all your Amazon Web Services Consulting needs!*
+Also, I had an excuse to play a little bit with github :)
 
-===================================
 
-**How it works:**
-ebs-snapshot.sh will:
-- Determine the instance ID of the EC2 server on which the script runs
-- Gather a list of all volume IDs attached to that instance
+How it works
+-------
+
+manageSnapshot will:
+- Gather a list of all volume IDs attached to the specific instance
 - Take a snapshot of each attached volume
-- The script will then delete all associated snapshots taken by the script that are older than 7 days
+- Mark the snapshot with a tag for easy identification
+- Delete all marked snapshots (taken by the script) that are older than 31 days
 
 
-Pull requests greatly welcomed!
 
-===================================
+Instalation
+-------
 
-**REQUIREMENTS**
+- create an IAM user
+- set policy for IAM user
+- install aws cli
+- set up cron for the script
+- chmod +x the script
 
-**IAM User:** This script requires that a new user (e.g. ebs-snapshot) be created in the IAM section of AWS.   
-Here is a sample IAM policy for AWS permissions that this new user will require:
+Create an IAM user and set (at least) the following policy:
 
 ```
 {
-  "Statement": [
-    {
-      "Action": [
-        "ec2:CreateSnapshot",
-        "ec2:DeleteSnapshot",
-        "ec2:CreateTags",
-        "ec2:DescribeInstanceAttribute",
-        "ec2:DescribeInstanceStatus",
-        "ec2:DescribeInstances",
-        "ec2:DescribeSnapshotAttribute",
-        "ec2:DescribeSnapshots",
-        "ec2:DescribeVolumeAttribute",
-        "ec2:DescribeVolumeStatus",
-        "ec2:DescribeVolumes",
-        "ec2:ReportInstanceStatus",
-        "ec2:ResetSnapshotAttribute"
-      ],
-      "Effect": "Allow",
-      "Resource": [
-        "*"
-      ]
-    }
-  ]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt11111111",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateSnapshot",
+                "ec2:DeleteSnapshot",
+                "ec2:DescribeSnapshots",
+                "ec2:CreateTags"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
 }
 ```
-<br />
+At the time of writing it was not possible to grant resource level permissions to these operations, hence the *
 
-**AWS CLI:** This script requires the AWS CLI tools to be installed.
 
-Linux install instructions for AWS CLI:
- - Make sure Python pip is installed (e.g. yum install python-pip, or apt-get install python-pip)
- - Then run: 
+For the cron job you can use something like this:
 ```
-pip install awscli
-```
-Once the AWS CLI has been installed, you'll need to configure it with the credentials of the IAM user created above:
+cat /etc/cron.weekly/aws-auto-backup
 
-```
-sudo aws configure
+#!/bin/bash
+
+set -e
+
+su - ubuntu -c '/home/ubuntu/bin/manageSnapshot'
 ```
 
-_Access Key & Secret Access Key_: enter in the credentials generated above for the new IAM user.
-
-_Region Name_: the region that this instance is currently in: ```i.e. us-east-1, eu-west-1, etc.```
-
-_Output Format_: enter "text"
-
-
-Then copy this Bash script to /opt/aws/ebs-snapshot.sh and make it executable:
-```
-chmod +x /opt/aws/ebs-snapshot.sh
-```
-
-You should then setup a cron job in order to schedule a nightly backup. Example crontab job:
-```
-55 22 * * * root  AWS_CONFIG_FILE="/root/.aws/config" /opt/aws/ebs-snapshot.sh > /var/log/ebs-snapshot.log 2>&1
-```
